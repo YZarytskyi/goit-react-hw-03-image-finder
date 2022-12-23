@@ -29,6 +29,39 @@ export default class App extends Component<{}, AppState> {
     keyword: '',
   };
 
+  componentDidUpdate(prevProps: any, prevState: AppState): void {
+    const prevKeyword = prevState.keyword;
+    const nextKeyword = this.state.keyword;
+    const prevPage = prevState.page;
+    const nextPage = this.state.page;
+    const isUpdate = prevKeyword !== nextKeyword || prevPage !== nextPage;
+    if (isUpdate) {
+      this.fetchImages(nextKeyword, nextPage)
+    }
+  }
+
+  fetchImages = (nextKeyword: string, nextPage: number) => {
+    pixabayApi
+    .fetchImages(nextKeyword, nextPage)
+    .then(({ data }) => {
+      if (!data.hits.length) {
+        Notify.failure('Images not found');
+        this.clearStateImages();
+        return;
+      }
+      this.setState(({ images }) => ({
+        images: [...images, ...data.hits],
+        totalImages: data.total,
+      }));
+    })
+    .catch(err => console.log(err.message))
+    .finally(() =>
+    this.setState({
+      loading: false,
+    })
+    );
+  }
+
   getImagesByKeyword = (keyword: string) => {
     keyword = keyword?.trim().toLowerCase();
     if (!keyword) {
@@ -37,29 +70,12 @@ export default class App extends Component<{}, AppState> {
       return;
     }
     this.setState({
+      images: [],
+      totalImages: null,
       loading: true,
       page: 1,
       keyword: keyword,
     });
-    pixabayApi
-      .fetchImages(keyword)
-      .then(({ data }) => {
-        if (!data.hits.length) {
-          Notify.failure('Images not found');
-          this.clearStateImages();
-          return;
-        }
-        this.setState({
-          images: data.hits,
-          totalImages: data.total,
-        });
-      })
-      .catch(err => console.log(err.message))
-      .finally(() =>
-        this.setState({
-          loading: false,
-        })
-      );
   };
 
   loadMoreImages = () => {
@@ -67,24 +83,6 @@ export default class App extends Component<{}, AppState> {
       loading: true,
       page: page + 1,
     }));
-    pixabayApi
-      .fetchImages(this.state.keyword, this.state.page + 1)
-      .then(({ data }) => {
-        if (!data.hits.length) {
-          Notify.failure('Images not found');
-          this.clearStateImages();
-          return;
-        }
-        this.setState(({ images }) => ({
-          images: [...images, ...data.hits],
-        }));
-      })
-      .catch(err => console.log(err.message))
-      .finally(() =>
-        this.setState({
-          loading: false,
-        })
-      );
   };
 
   clearStateImages = () => {
